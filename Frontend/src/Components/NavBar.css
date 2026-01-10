@@ -224,6 +224,17 @@ button#dropdown-basic-button {
     transform: scale(1.1);
 }
 
+.messagesIcon {
+    height: 45px;
+    width: auto;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.messagesIcon:hover {
+    transform: scale(1.1);
+}
+
 .nav-logo {
     height: 40px;
     width: auto;

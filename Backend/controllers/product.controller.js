@@ -23,6 +23,12 @@ const getAllProducts = async (req, res) => {
       limit = 100,
     } = req.query;
 
+    // Add cache headers for better performance
+    res.set({
+      'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+      'ETag': `products-${Date.now()}` // Simple ETag
+    });
+
     const filters = { search, category, minPrice, maxPrice };
 
     const products = await getAllProductsService(
@@ -33,10 +39,20 @@ const getAllProducts = async (req, res) => {
       Number(limit)
     );
 
-    return res.status(200).json(products); 
+    return res.status(200).json({ 
+      success: true,
+      data: products,
+      count: products.length,
+      page: Number(page),
+      limit: Number(limit)
+    }); 
   } catch (err) {
     console.error("getAllProducts error:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ 
+      success: false, 
+      error: "Internal Server Error",
+      message: err.message 
+    });
   }
 };
 

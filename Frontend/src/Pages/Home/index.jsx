@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import NavBar from '../../Components/NavBar';
 import './home.css';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 function Home() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -13,41 +14,66 @@ function Home() {
     const [maxPrice, setMaxPrice] = useState("");
     const [sortBy, setSortBy] = useState("");
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const params = new URLSearchParams();
-                if (selectedCategory !== "All") params.append("category", selectedCategory);
-                if (minPrice) params.append("minPrice", minPrice);
-                if (maxPrice) params.append("maxPrice", maxPrice);
-                if (sortBy) {
-                    const [field, order] = sortBy.split("-");
-                    params.append("sortBy", field);
-                    params.append("sortOrder", order === "asc" ? "1" : "-1");
-                }
-                if (searchTerm) params.append("search", searchTerm);
-
-                const response = await fetch(`https://cyclebay-backend.onrender.com/product?${params.toString()}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch products');
-                }
-                const result = await response.json();
-
-                const userData = JSON.parse(localStorage.getItem('user') || '{}');
-                const updatedProducts = (result.data || result).map(product => ({
-                    ...product,
-                    isLiked: product.likedBy?.includes(userData.userId) || false,
-                }));
-                setProducts(updatedProducts);
-
-            } catch (err) {
-                console.error("Error fetching products:", err);
-                setError("Something went wrong while fetching products.");
-            }
+    const debounce = (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
         };
+    };
 
-        fetchProducts();
+    const fetchProducts = useCallback(async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            if (selectedCategory !== "All") params.append("category", selectedCategory);
+            if (minPrice) params.append("minPrice", minPrice);
+            if (maxPrice) params.append("maxPrice", maxPrice);
+            if (sortBy) {
+                const [field, order] = sortBy.split("-");
+                params.append("sortBy", field);
+                params.append("sortOrder", order === "asc" ? "1" : "-1");
+            }
+            if (searchTerm) params.append("search", searchTerm);
+
+            const response = await fetch(`https://cyclebay-backend.onrender.com/product?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch products');
+            }
+            const result = await response.json();
+
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            const updatedProducts = (result.data || result).map(product => ({
+                ...product,
+                isLiked: product.likedBy?.includes(userData.userId) || false,
+            }));
+            setProducts(updatedProducts);
+            setError(null);
+
+        } catch (err) {
+            console.error("Error fetching products:", err);
+            setError("Something went wrong while fetching products.");
+        } finally {
+            setLoading(false);
+        }
     }, [selectedCategory, minPrice, maxPrice, sortBy, searchTerm]);
+
+    const debouncedFetchProducts = useCallback(
+        debounce(fetchProducts, 500),
+        [fetchProducts]
+    );
+
+    useEffect(() => {
+        if (searchTerm) {
+            debouncedFetchProducts();
+        } else {
+            fetchProducts();
+        }
+    }, [selectedCategory, minPrice, maxPrice, sortBy, searchTerm, fetchProducts, debouncedFetchProducts]);
 
     const categories = [
         "All",
@@ -165,13 +191,26 @@ function Home() {
                 </div>
 
                 <div className="Products-Grid">
-                    {products.length > 0 ? (
+                    {loading ? (
+                        <div className="loading-container">
+                            <div className="loading-spinner"></div>
+                            <p>Loading products...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="error-container">
+                            <p className="error-message">{error}</p>
+                            <button onClick={fetchProducts} className="retry-button">
+                                Try Again
+                            </button>
+                        </div>
+                    ) : products.length > 0 ? (
                         products.map((product, index) => (
-                            <div key={index} className="Products-Card"
+                            <div key={product._id || index} className="Products-Card"
                               onClick={()=>productClick(product._id)}>
                                 <img 
                                     src={`https://cyclebay-backend.onrender.com/uploads/${product.image}`}
-                                    alt={product.name} 
+                                    alt={product.name}
+                                    loading="lazy"
                                 />
                                 <h3>{product.name}</h3>
                                 <p className="description">{product.desc}</p>
@@ -189,13 +228,16 @@ function Home() {
                                         }
                                         alt="Like"
                                         style={{ width: '100%', height: '100%' }}
+                                        loading="lazy"
                                     />
                                 </button>
                                 <h3 className="price">{formatPrice(product.price)}</h3>
                             </div>
                         ))
                     ) : (
-                        <p>Loading products...</p>
+                        <div className="no-products">
+                            <p>No products found matching your criteria.</p>
+                        </div>
                     )}
                 </div>
             </div>

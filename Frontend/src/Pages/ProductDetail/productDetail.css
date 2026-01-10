@@ -112,7 +112,7 @@
     margin: 0 0 15px 0;
 }
 
-.make-offer-btn {
+.start-conversation-btn {
     background-color: var(--button-bg);
     color: var(--profile-bg);
     border: none;
@@ -125,10 +125,17 @@
     box-shadow: 0 2px 8px var(--shadow-color);
 }
 
-.make-offer-btn:hover {
+.start-conversation-btn:hover:not(:disabled) {
     background-color: var(--button-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.start-conversation-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 .description-details {
@@ -321,7 +328,7 @@
         font-size: 1.8rem;
     }
 
-    .make-offer-btn {
+    .start-conversation-btn {
         width: 100%;
     }
 

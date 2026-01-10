@@ -61,7 +61,7 @@ function NavBar() {
     };
 
     const handleNavigation = (path) => {
-        if (!isLoggedIn && (path === '/profile' || path === '/sell')) {
+        if (!isLoggedIn && (path === '/profile' || path === '/sell' || path === '/messages')) {
             alert('Please login to access this feature');
             navigate('/signin');
             return;
@@ -103,8 +103,14 @@ function NavBar() {
                             <>
                                 <li>
                                     <span 
+                                        onClick={() => handleNavigation('/messages')}>
+                                        <img className="messagesIcon" src="https://cdn-icons-png.flaticon.com/128/1380/1380338.png" alt="Messages"></img>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span 
                                         onClick={() => handleNavigation('/likedProducts')}>
-                                        <img className="likedIcon" src="https://cdn-icons-png.flaticon.com/128/5735/5735325.png"></img>
+                                        <img className="likedIcon" src="https://cdn-icons-png.flaticon.com/128/5735/5735325.png" alt="Liked Products"></img>
                                     </span>
                                 </li>
                                 <DropdownButton 

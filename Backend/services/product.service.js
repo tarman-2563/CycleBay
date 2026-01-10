@@ -10,8 +10,9 @@ const getAllProductsService = async (
 ) => {
   let query = {};
 
+  // Improved search using MongoDB text search
   if (filters.search) {
-  query.name = { $regex: filters.search, $options: "i" };
+    query.$text = { $search: filters.search };
   }
 
   if (filters.category) {
@@ -25,12 +26,21 @@ const getAllProductsService = async (
   }
 
   let sort = {};
+  
+  // If text search is used, sort by text score first
+  if (filters.search) {
+    sort.score = { $meta: "textScore" };
+  }
+  
   sort[sortBy] = sortOrder;
 
-  return await Product.find(query)
+  const products = await Product.find(query)
     .sort(sort)
     .skip((page - 1) * limit)
-    .limit(limit);
+    .limit(limit)
+    .lean(); // Use lean() for better performance
+
+  return products;
 };
 
 const getProductByIdService = async (id) => {

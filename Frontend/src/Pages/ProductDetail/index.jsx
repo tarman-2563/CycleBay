@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from 'react'
 import NavBar from '../../Components/NavBar'
-import {useParams} from 'react-router-dom'
+import {useParams, useNavigate} from 'react-router-dom'
 import './productDetail.css'
 
 function ProductDetail() {
   const {id} = useParams()
+  const navigate = useNavigate()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -34,48 +35,81 @@ function ProductDetail() {
     fetchProductDetails()
   }, [id])
 
-  const handleMakeOffer = async () => {
+  const handleStartConversation = async () => {
+    console.log("Start conversation clicked");
+    
     const token = localStorage.getItem('token');
     if (!token) {
-      alert("User not logged in.");
+      console.log("No token found, redirecting to signin");
+      navigate('/signin');
       return;
     }
 
-    let buyerName = 'A user';
-    try {
-      const decoded = jwtDecode(token);
-      buyerName = decoded.name || decoded.email || 'A user';
-    } catch (err) {
-      console.error("Error decoding token:", err);
-    }
-
-    const sellerEmail = product.createdBy?.email;
-    const productName = product.name;
-
-    if (!sellerEmail) {
-      alert("Seller email not available.");
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log("User data:", userData);
+    console.log("Product creator:", product.createdBy);
+    
+    if (userData.userId === product.createdBy._id) {
+      alert("You cannot start a conversation with yourself!");
       return;
     }
 
+    const button = document.querySelector('.start-conversation-btn');
+    const originalText = button.textContent;
+    button.textContent = 'Starting...';
+    button.disabled = true;
+
     try {
-      const response = await fetch('https://cyclebay-backend.onrender.com/offer/send-offer', {
+      console.log("Sending request to create conversation...");
+      console.log("Product ID:", product._id);
+      
+      const response = await fetch('https://cyclebay-backend.onrender.com/message/conversation', {
         method: 'POST',
-        headers: { 
-          'x-access-token': token,
-          'Content-Type': 'application/json'
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': token
         },
-        body: JSON.stringify({ sellerEmail, buyerName, productName })
+        body: JSON.stringify({ productId: product._id })
       });
 
+      console.log("Response status:", response.status);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          alert("The messaging feature is currently being deployed. Please try again in a few minutes, or contact the seller via the old email system for now.");
+          return;
+        } else if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/signin');
+          return;
+        } else if (response.status === 500) {
+          throw new Error("Server error. Please try again later.");
+        } else {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+      }
+      
       const result = await response.json();
+      console.log("Response data:", result);
+      
       if (result.success) {
-        alert("Offer sent to the seller!");
+        console.log("Conversation created successfully, navigating to messages");
+        navigate('/messages');
       } else {
-        alert("Failed to send offer.");
+        throw new Error(result.message || "Failed to create conversation");
       }
     } catch (err) {
-      console.error("Error sending offer:", err);
-      alert("Something went wrong while sending the offer.");
+      console.error("Error starting conversation:", err);
+      
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("The messaging feature is currently being set up. Please try again in a few minutes!");
+      } else {
+        alert("Error: " + err.message);
+      }
+    } finally {
+      button.textContent = originalText;
+      button.disabled = false;
     }
   };
 
@@ -132,7 +166,9 @@ function ProductDetail() {
                 <h3>Overview</h3>
                 <div className="price-action-section">
                   <h2 className="overview-price">{formatPrice(product.price)}</h2>
-                  <button className="make-offer-btn" onClick={handleMakeOffer}>Make Offer</button>
+                  <button className="start-conversation-btn" onClick={handleStartConversation}>
+                    Start Conversation
+                  </button>
                 </div>
               </div> 
               <div className="description-details">
