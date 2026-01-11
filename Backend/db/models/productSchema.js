@@ -118,15 +118,6 @@ let productSchema = new mongoose.Schema({
   }
 });
 
-// Add indexes for better query performance
-productSchema.index({ category: 1 });
-productSchema.index({ price: 1 });
-productSchema.index({ createdAt: -1 });
-productSchema.index({ name: "text", desc: "text" }); // Text search index
-productSchema.index({ category: 1, price: 1 }); // Compound index for filtering
-productSchema.index({ createdBy: 1 }); // For user's products
-productSchema.index({ likedBy: 1 }); // For liked products queries
-
 productSchema.pre("save", function (next) {
   if (this.isModified('likedBy') && Object.keys(this.modifiedPaths()).length === 1) {
     return next();
